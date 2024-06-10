@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +17,7 @@
       align-items: center;
       justify-content: center;
     }
+
     header {
       background-color: #000;
       color: #fff;
@@ -23,14 +25,17 @@
       text-align: center;
       width: 100%;
     }
+
     header img {
-      width: 120px;
-      height: 120px;
+      width: 80px;
+      height: 80px;
       margin-right: 10px;
     }
+
     header h1 {
       font-weight: bold;
     }
+
     footer {
       background-color: #000;
       color: #fff;
@@ -40,28 +45,38 @@
       margin-top: auto;
       font-weight: bold;
     }
+
     .container {
       text-align: center;
     }
+
     .card-img-top {
       width: 100%;
       height: 100px;
       object-fit: contain;
     }
+
     .card-body {
       text-align: center;
     }
+
     .card-title {
       font-size: 2rem;
     }
+
     .card {
       cursor: pointer;
     }
+
+    .btn-group-toggle {
+      margin-right: 5px;
+    }
   </style>
 </head>
+
 <body>
   <header>
-    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu">
+    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu" >
     <h1 class="d-inline-block align-middle">포켓몬 영단어장</h1>
   </header>
 
@@ -77,10 +92,10 @@
   <script>
     const sheetId = '1VvU07KDXblx5TpKbJ491EZw8_kaAGNFcUeU-SImyQ0k';
     const scriptURL = 'AKfycbx8h6YqfE1t5t59apKzjoXoxGyImS8qj5mPbkykv1L615H84K3xDBAarZdd5K6zDnxf';
-    
+
     let allData = {};
     let sheetNames = [];
-    
+
     async function getInitialData() {
       document.getElementById('wordCardContainer').innerHTML = "";
       document.getElementById('loading').style.display = 'block';
@@ -238,6 +253,78 @@
       return radioWrapper;
     }
 
+    async function renderWordCards(dataArray) {
+      const wordCardContainer = document.getElementById('wordCardContainer');
+      wordCardContainer.innerHTML = '';
+      document.getElementById('loading').style.display = 'none';
+
+      for (let i = 0; i < dataArray.length; i++) {
+        const item = dataArray[i];
+        const col = document.createElement('div');
+        col.classList.add('col');
+
+        const card = document.createElement('div');
+        card.classList.add('card');
+        card.addEventListener('click', () => {
+          const word = item[0];
+          const utterance = new SpeechSynthesisUtterance(word);
+          utterance.lang = 'en-US';
+          speechSynthesis.speak(utterance);
+        });
+        col.appendChild(card);
+
+        const pokemonId = Math.floor(Math.random() * 898) + 1;
+        const pokemonResponse = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
+        const pokemonData = await pokemonResponse.json();
+        const pokemonImage = pokemonData.sprites.other['official-artwork'].front_default;
+
+        const img = document.createElement('img');
+        img.src = pokemonImage;
+        img.classList.add('card-img-top');
+        card.appendChild(img);
+
+        const cardBody = document.createElement('div');
+        cardBody.classList.add('card-body');
+        card.appendChild(cardBody);
+
+        const title = document.createElement('h5');
+        title.classList.add('card-title');
+        title.textContent = item[0];
+        cardBody.appendChild(title);
+
+        const radioGroup = document.createElement('div');
+        radioGroup.classList.add('btn-group', 'mb-2');
+        radioGroup.setAttribute('role', 'group');
+
+        const radio1 = createRadioButton('radio' + i, '암기완료', item[5] === 'true', () => updateStatus(i, 'true'));
+        const radio2 = createRadioButton('radio' + i, '암기중', item[5] !== 'true', () => updateStatus(i, 'false'));
+
+        radioGroup.appendChild(radio1);
+        radioGroup.appendChild(radio2);
+        cardBody.appendChild(radioGroup);
+
+        const button = document.createElement('button');
+        button.classList.add('btn', 'btn-primary', 'mt-2', 'd-block', 'mx-auto');
+        button.textContent = '설명보기';
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          Swal.fire({
+            title: item[0],
+            html: `
+              <p><strong>뜻:</strong> ${item[1]}</p>
+              <p><strong>난이도:</strong> ${item[2]}</p>
+              <p><strong>주제:</strong> ${item[3]}</p>
+              <p><strong>예시:</strong> ${item[4]}</p>
+            `,
+            confirmButtonText: 'Close'
+          });
+        });
+        cardBody.appendChild(button);
+
+        wordCardContainer.appendChild(col);
+      }
+    }
+
     async function updateStatus(wordIndex, status) {
       const data = {
         wordIndex: wordIndex,
@@ -265,4 +352,5 @@
     getInitialData();
   </script>
 </body>
+
 </html>
