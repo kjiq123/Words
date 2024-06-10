@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>포켓몬 영단어장</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      background: linear-gradient(45deg, #ffe5e5, #f9ffe5, #e5ffe5, #e5f9ff, #e5e5ff);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    header {
+      background-color: #000;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+      width: 100%;
+    }
+    header img {
+      width: 80px;
+      height: 80px;
+      margin-right: 10px;
+    }
+    header h1 {
+      font-weight: bold;
+    }
+    footer {
+      background-color: #000;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+      width: 100%;
+      margin-top: auto;
+      font-weight: bold;
+    }
+    .container {
+      text-align: center;
+    }
+    .card-img-top {
+      width: 100%;
+      height: 100px;
+      object-fit: contain;
+    }
+    .card-body {
+      text-align: center;
+    }
+    .card-title {
+      font-size: 2rem;
+    }
+    .card {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu">
+    <h1 class="d-inline-block align-middle">포켓몬 영단어장</h1>
+  </header>
+
+  <div class="container mt-3">
+    <div class="mb-3" id="sheetButtons"></div>
+    <div id="loading" style="display: none;">Loading...</div>
+    <div id="wordCardContainer" class="row row-cols-auto g-3 justify-content-center"></div>
+  </div>
+
+  <footer>
+    <p>© 2024 by Runbuilder</p>
+  </footer>
+  <script>
+    const sheetId = '1VvU07KDXblx5TpKbJ491EZw8_kaAGNFcUeU-SImyQ0k';
+    const scriptURL = 'AKfycbx8h6YqfE1t5t59apKzjoXoxGyImS8qj5mPbkykv1L615H84K3xDBAarZdd5K6zDnxf';
+    
+    let allData = {};
+    let sheetNames = [];
+    
+    async function getInitialData() {
+      document.getElementById('wordCardContainer').innerHTML = "";
+      document.getElementById('loading').style.display = 'block';
+
+      const URL = `https://script.google.com/macros/s/${scriptURL}/exec?sn=${sheetId}`;
+
+      try {
+        const response = await fetch(URL);
+        if (!response.ok) {
+          throw new Error('Google Apps Script 호출 실패');
+        }
+
+        const data = await response.json();
+        sheetNames = data.sheetNames;
+
+        const initialSheetURL = `https://script.google.com/macros/s/${scriptURL}/exec?sn=${sheetId}&param=0`;
+        const initialSheetResponse = await fetch(initialSheetURL);
+        const initialSheetData = await initialSheetResponse.json();
+        allData[sheetNames[0]] = initialSheetData.data;
+
+        renderSheetButtons(sheetNames);
+        renderWordCards(allData[sheetNames[0]]);
+
+        getRemainingData();
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').style.display = 'none';
+        Swal.fire('Error', error.message, 'error');
+      }
+    }
+
+    async function getRemainingData() {
+      for (let i = 1; i < sheetNames.length; i++) {
+        const sheetURL = `https://script.google.com/macros/s/${scriptURL}/exec?sn=${sheetId}&param=${i}`;
+        const sheetResponse = await fetch(sheetURL);
+        const sheetData = await sheetResponse.json();
+        allData[sheetNames[i]] = sheetData.data;
+      }
+    }
+
+    function renderSheetButtons(sheetNames) {
+      const sheetButtons = document.getElementById('sheetButtons');
+      sheetButtons.innerHTML = '';
+
+      sheetNames.forEach((name, index) => {
+        const button = document.createElement('button');
+        button.textContent = name;
+        button.classList.add('btn', 'btn-info', 'me-2');
+        if (index === 0) {
+          button.classList.add('active');
+        }
+        button.addEventListener('click', () => {
+          document.querySelectorAll('#sheetButtons button').forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          renderWordCards(allData[name]);
+        });
+        sheetButtons.appendChild(button);
+      });
+    }
+
+    async function renderWordCards(dataArray) {
+      const wordCardContainer = document.getElementById('wordCardContainer');
+      wordCardContainer.innerHTML = '';
+      document.getElementById('loading').style.display = 'none';
+
+      for (let i = 0; i < dataArray.length; i++) {
+        const item = dataArray[i];
+        const col = document.createElement('div');
+        col.classList.add('col');
+
+        const card = document.createElement('div');
+        card.classList.add('card');
+        card.addEventListener('click', () => {
+          const word = item[0];
+          const utterance = new SpeechSynthesisUtterance(word);
+          utterance.lang = 'en-US';
+          speechSynthesis.speak(utterance);
+        });
+        col.appendChild(card);
+
+        const pokemonId = Math.floor(Math.random() * 898) + 1;
+        const pokemonResponse = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
+        const pokemonData = await pokemonResponse.json();
+        const pokemonImage = pokemonData.sprites.other['official-artwork'].front_default;
+
+        const img = document.createElement('img');
+        img.src = pokemonImage;
+        img.classList.add('card-img-top');
+        card.appendChild(img);
+
+        const cardBody = document.createElement('div');
+        cardBody.classList.add('card-body');
+        card.appendChild(cardBody);
+
+        const title = document.createElement('h5');
+        title.classList.add('card-title');
+        title.textContent = item[0];
+        cardBody.appendChild(title);
+
+        const radioGroup = document.createElement('div');
+        radioGroup.classList.add('btn-group', 'mb-2');
+        radioGroup.setAttribute('role', 'group');
+
+        const radio1 = createRadioButton('radio' + i, '암기완료', item[5] === 'true', () => updateStatus(i, 'true'));
+        const radio2 = createRadioButton('radio' + i, '암기중', item[5] !== 'true', () => updateStatus(i, 'false'));
+
+        radioGroup.appendChild(radio1);
+        radioGroup.appendChild(radio2);
+        cardBody.appendChild(radioGroup);
+
+        const button = document.createElement('button');
+        button.classList.add('btn', 'btn-primary', 'mt-2', 'd-block', 'mx-auto');
+        button.textContent = '설명보기';
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          Swal.fire({
+            title: item[0],
+            html: `
+              <p><strong>뜻:</strong> ${item[1]}</p>
+              <p><strong>난이도:</strong> ${item[2]}</p>
+              <p><strong>주제:</strong> ${item[3]}</p>
+              <p><strong>예시:</strong> ${item[4]}</p>
+            `,
+            confirmButtonText: 'Close'
+          });
+        });
+        cardBody.appendChild(button);
+
+        wordCardContainer.appendChild(col);
+      }
+    }
+
+    function createRadioButton(name, label, checked, onChangeHandler) {
+      const radioWrapper = document.createElement('div');
+      radioWrapper.classList.add('btn-group-toggle');
+      radioWrapper.setAttribute('data-toggle', 'buttons');
+
+      const radioLabel = document.createElement('label');
+      radioLabel.classList.add('btn', 'btn-outline-secondary', 'btn-sm');
+      if (checked) {
+        radioLabel.classList.add('active');
+      }
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = name;
+      radio.autocomplete = 'off';
+      radio.checked = checked;
+      radio.addEventListener('change', onChangeHandler);
+
+      radioLabel.appendChild(radio);
+      radioLabel.appendChild(document.createTextNode(label));
+      radioWrapper.appendChild(radioLabel);
+
+      return radioWrapper;
+    }
+
+    async function updateStatus(wordIndex, status) {
+      const data = {
+        wordIndex: wordIndex,
+        status: status
+      };
+
+      const options = {
+        method: 'POST',
+        body: JSON.stringify(data)
+      };
+
+      const URL = `https://script.google.com/macros/s/${scriptURL}/exec?sn=${sheetId}`;
+
+      try {
+        const response = await fetch(URL, options);
+        if (!response.ok) {
+          throw new Error('Google Apps Script 호출 실패');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('Error', error.message, 'error');
+      }
+    }
+
+    getInitialData();
+  </script>
+</body>
+</html>
