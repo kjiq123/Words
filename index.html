@@ -83,7 +83,10 @@
   <div class="container mt-3">
     <div class="input-group mb-3">
       <input type="text" class="form-control" id="wordInput" placeholder="암기할 영단어를 입력하세요">
-      <button class="btn btn-primary" type="button" id="addWordBtn">확인</button>
+      <button class="btn btn-primary" type="button" id="addWordBtn">
+        <span id="addWordText">확인</span>
+        <span id="addWordSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+      </button>
     </div>
     <div class="mb-3" id="sheetButtons"></div>
     <div id="loading" style="display: none;">Loading...</div>
@@ -293,11 +296,16 @@
     async function addNewWord() {
       const wordInput = document.getElementById('wordInput');
       const word = wordInput.value.trim();
+      const addWordText = document.getElementById('addWordText');
+      const addWordSpinner = document.getElementById('addWordSpinner');
 
       if (word === '') {
         Swal.fire('입력 오류', '영단어를 입력해주세요.', 'error');
         return;
       }
+
+      addWordText.style.display = 'none';
+      addWordSpinner.style.display = 'inline-block';
 
       try {
         const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
@@ -338,10 +346,19 @@
         wordInput.value = '';
         Swal.fire('단어 추가 완료', '새로운 영단어가 추가되었습니다.', 'success');
 
+        const sheetURL = `https://script.google.com/macros/s/${scriptURL}/exec?sn=${sheetId}&param=${sheetIndex}`;
+        const sheetResponse = await fetch(sheetURL);
+        const sheetData = await sheetResponse.json();
+        allData[sheetName] = sheetData.data;
+        renderWordCards(allData[sheetName], sheetName);
+
       } catch (error) {
         console.error('Error:', error);
         Swal.fire('오류', '영단어 추가 중 오류가 발생했습니다.', 'error');
       }
+
+      addWordText.style.display = 'inline-block';
+      addWordSpinner.style.display = 'none';
     }
 
     getInitialData();
