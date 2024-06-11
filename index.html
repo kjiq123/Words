@@ -76,11 +76,15 @@
 
 <body>
   <header>
-    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu" >
+    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu">
     <h1 class="d-inline-block align-middle">포켓몬 영단어장</h1>
   </header>
 
   <div class="container mt-3">
+    <div class="input-group mb-3">
+      <input type="text" class="form-control" id="wordInput" placeholder="암기할 영단어를 입력하세요">
+      <button class="btn btn-primary" type="button" id="addWordBtn">확인</button>
+    </div>
     <div class="mb-3" id="sheetButtons"></div>
     <div id="loading" style="display: none;">Loading...</div>
     <div id="wordCardContainer" class="row row-cols-auto g-3 justify-content-center"></div>
@@ -89,9 +93,10 @@
   <footer>
     <p>© 2024 by Runbuilder</p>
   </footer>
+
   <script>
     const sheetId = '1VvU07KDXblx5TpKbJ491EZw8_kaAGNFcUeU-SImyQ0k';
-    const scriptURL = 'AKfycbx8h6YqfE1t5t59apKzjoXoxGyImS8qj5mPbkykv1L615H84K3xDBAarZdd5K6zDnxf';
+    const scriptURL = 'AKfycbwRu_CBCjWVW228q1VyWQrk3f85Waf3Ar-k137D9EI-hPXBVZMOxJ51sbS61X8yfp1k';
 
     let allData = {};
     let sheetNames = [];
@@ -117,9 +122,10 @@
         allData[sheetNames[0]] = initialSheetData.data;
 
         renderSheetButtons(sheetNames);
-        renderWordCards(allData[sheetNames[0]]);
 
-        getRemainingData();
+        await getRemainingData();
+        renderWordCards(allData[sheetNames[0]], sheetNames[0]);
+
       } catch (error) {
         console.error('Error:', error);
         document.getElementById('loading').style.display = 'none';
@@ -150,13 +156,13 @@
         button.addEventListener('click', () => {
           document.querySelectorAll('#sheetButtons button').forEach(btn => btn.classList.remove('active'));
           button.classList.add('active');
-          renderWordCards(allData[name]);
+          renderWordCards(allData[name], name);
         });
         sheetButtons.appendChild(button);
       });
     }
 
-    async function renderWordCards(dataArray) {
+    async function renderWordCards(dataArray, sheetName) {
       const wordCardContainer = document.getElementById('wordCardContainer');
       wordCardContainer.innerHTML = '';
       document.getElementById('loading').style.display = 'none';
@@ -199,8 +205,12 @@
         radioGroup.classList.add('btn-group', 'mb-2');
         radioGroup.setAttribute('role', 'group');
 
-        const radio1 = createRadioButton('radio' + i, '암기완료', item[5] === 'true', () => updateStatus(i, 'true'));
-        const radio2 = createRadioButton('radio' + i, '암기중', item[5] !== 'true', () => updateStatus(i, 'false'));
+        const isMemorized = item[5];
+        console.log(item[5]);
+
+        const sheetIndex = sheetNames.indexOf(sheetName);
+        const radio1 = createRadioButton('radio' + i, '암기완료', isMemorized, () => updateStatus(i, 'true', sheetIndex));
+        const radio2 = createRadioButton('radio' + i, '암기중', !isMemorized, () => updateStatus(i, 'false', sheetIndex));
 
         radioGroup.appendChild(radio1);
         radioGroup.appendChild(radio2);
@@ -253,82 +263,11 @@
       return radioWrapper;
     }
 
-    async function renderWordCards(dataArray) {
-      const wordCardContainer = document.getElementById('wordCardContainer');
-      wordCardContainer.innerHTML = '';
-      document.getElementById('loading').style.display = 'none';
-
-      for (let i = 0; i < dataArray.length; i++) {
-        const item = dataArray[i];
-        const col = document.createElement('div');
-        col.classList.add('col');
-
-        const card = document.createElement('div');
-        card.classList.add('card');
-        card.addEventListener('click', () => {
-          const word = item[0];
-          const utterance = new SpeechSynthesisUtterance(word);
-          utterance.lang = 'en-US';
-          speechSynthesis.speak(utterance);
-        });
-        col.appendChild(card);
-
-        const pokemonId = Math.floor(Math.random() * 898) + 1;
-        const pokemonResponse = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
-        const pokemonData = await pokemonResponse.json();
-        const pokemonImage = pokemonData.sprites.other['official-artwork'].front_default;
-
-        const img = document.createElement('img');
-        img.src = pokemonImage;
-        img.classList.add('card-img-top');
-        card.appendChild(img);
-
-        const cardBody = document.createElement('div');
-        cardBody.classList.add('card-body');
-        card.appendChild(cardBody);
-
-        const title = document.createElement('h5');
-        title.classList.add('card-title');
-        title.textContent = item[0];
-        cardBody.appendChild(title);
-
-        const radioGroup = document.createElement('div');
-        radioGroup.classList.add('btn-group', 'mb-2');
-        radioGroup.setAttribute('role', 'group');
-
-        const radio1 = createRadioButton('radio' + i, '암기완료', item[5] === 'true', () => updateStatus(i, 'true'));
-        const radio2 = createRadioButton('radio' + i, '암기중', item[5] !== 'true', () => updateStatus(i, 'false'));
-
-        radioGroup.appendChild(radio1);
-        radioGroup.appendChild(radio2);
-        cardBody.appendChild(radioGroup);
-
-        const button = document.createElement('button');
-        button.classList.add('btn', 'btn-primary', 'mt-2', 'd-block', 'mx-auto');
-        button.textContent = '설명보기';
-        button.addEventListener('click', (event) => {
-          event.stopPropagation();
-          Swal.fire({
-            title: item[0],
-            html: `
-              <p><strong>뜻:</strong> ${item[1]}</p>
-              <p><strong>난이도:</strong> ${item[2]}</p>
-              <p><strong>주제:</strong> ${item[3]}</p>
-              <p><strong>예시:</strong> ${item[4]}</p>
-            `,
-            confirmButtonText: 'Close'
-          });
-        });
-        cardBody.appendChild(button);
-
-        wordCardContainer.appendChild(col);
-      }
-    }
-
-    async function updateStatus(wordIndex, status) {
+    async function updateStatus(wordIndex, status, sheetIndex) {
       const data = {
         wordIndex: wordIndex,
-        status: status
+        status: status,
+        sheetIndex: sheetIndex
       };
 
       const options = {
@@ -346,6 +285,62 @@
       } catch (error) {
         console.error('Error:', error);
         Swal.fire('Error', error.message, 'error');
+      }
+    }
+
+    document.getElementById('addWordBtn').addEventListener('click', addNewWord);
+
+    async function addNewWord() {
+      const wordInput = document.getElementById('wordInput');
+      const word = wordInput.value.trim();
+
+      if (word === '') {
+        Swal.fire('입력 오류', '영단어를 입력해주세요.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error('API 호출 실패');
+        }
+
+        const meaning = data[0].meanings[0].definitions[0].definition;
+        const difficulty = 'Easy';
+        const topic = 'General';
+        const example = data[0].meanings[0].definitions[0].example || '';
+
+        const sheetName = document.querySelector('#sheetButtons .active').textContent;
+        const sheetIndex = sheetNames.indexOf(sheetName);
+
+        const wordData = {
+          word: word,
+          meaning: meaning,
+          difficulty: difficulty,
+          topic: topic,
+          example: example,
+          sheetIndex: sheetIndex
+        };
+
+        const options = {
+          method: 'POST',
+          body: JSON.stringify(wordData)
+        };
+
+        const appScriptResponse = await fetch(`https://script.google.com/macros/s/${scriptURL}/exec?sn=${sheetId}&type=addWord`, options);
+
+        if (!appScriptResponse.ok) {
+          throw new Error('Google Apps Script 호출 실패');
+        }
+
+        wordInput.value = '';
+        Swal.fire('단어 추가 완료', '새로운 영단어가 추가되었습니다.', 'success');
+
+      } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('오류', '영단어 추가 중 오류가 발생했습니다.', 'error');
       }
     }
 
